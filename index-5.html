@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>산업 사이클 달력</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--serif:'Noto Serif KR',serif;--sans:'Noto Sans KR',sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{font-family:var(--sans);transition:background 1.4s ease;overflow-x:hidden}
+canvas#bg{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
+.page{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:2.5rem 1.5rem 6rem}
+.nav{display:flex;gap:4px;margin-bottom:2rem;background:rgba(255,255,255,0.25);border-radius:30px;padding:4px;backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.4);width:fit-content}
+.nav-btn{padding:7px 18px;font-size:0.8rem;font-family:var(--sans);border-radius:24px;border:none;background:transparent;cursor:pointer;transition:all 0.2s;font-weight:400;white-space:nowrap}
+.nav-btn.active{font-weight:500;box-shadow:0 1px 8px rgba(0,0,0,0.12)}
+header{margin-bottom:1.75rem}
+header h1{font-family:var(--serif);font-size:1.9rem;font-weight:600;letter-spacing:-0.02em;margin-bottom:0.3rem;transition:color 0.8s}
+header p{font-size:0.88rem;font-weight:300;opacity:0.7;transition:color 0.8s}
+.section{display:none}.section.active{display:block}
+.tabs{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:1.5rem}
+.tab{padding:5px 15px;font-size:0.78rem;border-radius:30px;border:1px solid rgba(255,255,255,0.45);cursor:pointer;transition:all 0.2s;backdrop-filter:blur(6px)}
+.tab:hover{transform:translateY(-1px)}.tab.active{font-weight:500}
+.main-card{border-radius:20px;padding:1.75rem 2rem;margin-bottom:1.25rem;backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.45);transition:background 0.8s}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1rem}
+.sector-title{font-family:var(--serif);font-size:1.7rem;font-weight:600;letter-spacing:-0.02em;transition:color 0.8s}
+.badge{padding:5px 15px;border-radius:30px;font-size:0.78rem;font-weight:500;white-space:nowrap;flex-shrink:0;border:1px solid rgba(255,255,255,0.55);backdrop-filter:blur(8px);transition:all 0.8s}
+.reason{font-size:0.92rem;line-height:1.85;font-weight:300;margin-bottom:1.5rem;transition:color 0.8s}
+.sec-label{font-size:0.7rem;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.7rem;opacity:0.65;transition:color 0.8s}
+.ind-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin-bottom:1.75rem}
+.ind-card{border-radius:10px;padding:12px 14px;cursor:pointer;transition:all 0.2s;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(4px)}
+.ind-card:hover{transform:translateY(-2px);border-color:rgba(255,255,255,0.65)}.ind-card.open{border-color:rgba(255,255,255,0.75)}
+.ind-top{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:3px}
+.ind-name{font-size:0.82rem;font-weight:500;transition:color 0.8s;line-height:1.3}
+.ind-value{font-size:0.95rem;font-weight:600;transition:color 0.8s;white-space:nowrap}
+.ind-change{font-size:0.75rem;font-weight:500;margin-bottom:2px}
+.ind-src{font-size:0.7rem;opacity:0.6}
+.ind-desc{font-size:0.78rem;line-height:1.6;margin-top:9px;padding-top:9px;display:none;border-top:1px solid rgba(255,255,255,0.25);font-weight:300}
+.ind-card.open .ind-desc{display:block}
+.season-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.s-box{border-radius:10px;padding:13px;border:1.5px solid transparent;transition:all 0.35s;backdrop-filter:blur(6px)}
+.s-box.current{border-color:rgba(255,255,255,0.65)!important;transform:scale(1.03)}
+.s-icon{font-size:1rem;margin-bottom:5px}.s-label{font-size:0.75rem;font-weight:500;margin-bottom:4px}
+.s-cond{font-size:0.68rem;line-height:1.5;opacity:0.8;font-weight:300}
+.panel{border-radius:20px;padding:1.75rem 2rem;backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.45);margin-bottom:1.25rem;transition:background 0.8s}
+.panel-title{font-family:var(--serif);font-size:1.3rem;font-weight:600;margin-bottom:0.4rem;transition:color 0.8s}
+.panel-sub{font-size:0.85rem;font-weight:300;opacity:0.7;margin-bottom:1.5rem;transition:color 0.8s}
+#relationCanvas{width:100%;border-radius:12px;display:block;cursor:pointer}
+.rel-detail{margin-top:1.25rem;border-radius:12px;padding:1.1rem 1.25rem;background:rgba(255,255,255,0.35);border:1px solid rgba(255,255,255,0.45);min-height:60px;transition:all 0.3s}
+.legend{display:flex;gap:16px;margin-top:1rem;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:0.75rem;opacity:0.75;font-weight:300}
+.legend-line{width:24px;height:2px;border-radius:2px}
+.port-sectors{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:8px;margin-bottom:1.5rem}
+.port-chip{border-radius:10px;padding:12px;cursor:pointer;transition:all 0.2s;border:1.5px solid rgba(255,255,255,0.3);text-align:center;backdrop-filter:blur(4px);user-select:none}
+.port-chip:hover{transform:translateY(-2px)}.port-chip.selected{border-color:rgba(255,255,255,0.8);box-shadow:0 2px 12px rgba(0,0,0,0.1)}
+.port-chip-icon{font-size:1.2rem;margin-bottom:4px}.port-chip-name{font-size:0.78rem;font-weight:500;transition:color 0.8s}
+.port-chip-season{font-size:0.68rem;opacity:0.75;margin-top:2px;font-weight:300}
+.port-result{border-radius:14px;padding:1.4rem 1.5rem;background:rgba(255,255,255,0.38);border:1px solid rgba(255,255,255,0.5)}
+.port-result-top{display:flex;align-items:center;gap:1rem;margin-bottom:1rem}
+.port-big-season{font-size:2rem}.port-result-title{font-family:var(--serif);font-size:1.15rem;font-weight:600;transition:color 0.8s}
+.port-result-sub{font-size:0.82rem;font-weight:300;opacity:0.8;margin-top:2px}
+.port-bars{display:flex;flex-direction:column;gap:7px;margin-bottom:1rem}
+.port-bar-row{display:flex;align-items:center;gap:10px}
+.port-bar-label{font-size:0.75rem;width:78px;flex-shrink:0;font-weight:300}
+.port-bar-track{flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,0.25);overflow:hidden}
+.port-bar-fill{height:100%;border-radius:4px;transition:width 0.6s ease}
+.port-bar-pct{font-size:0.75rem;width:34px;text-align:right;font-weight:500}
+.port-advice{font-size:0.85rem;line-height:1.75;font-weight:300;padding-top:0.9rem;border-top:1px solid rgba(255,255,255,0.3)}
+.port-empty{text-align:center;padding:2rem;font-size:0.88rem;opacity:0.55;font-weight:300}
+.news-sector-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1.25rem}
+.news-tab{padding:4px 13px;font-size:0.75rem;border-radius:20px;border:1px solid rgba(255,255,255,0.4);cursor:pointer;transition:all 0.2s;backdrop-filter:blur(4px)}
+.news-tab.active{font-weight:500;border-color:rgba(255,255,255,0.8)}
+.news-list{display:flex;flex-direction:column;gap:10px}
+.news-item{border-radius:10px;padding:13px 15px;background:rgba(255,255,255,0.32);border:1px solid rgba(255,255,255,0.38);transition:all 0.2s;cursor:pointer;text-decoration:none;display:block}
+.news-item:hover{background:rgba(255,255,255,0.48);transform:translateY(-1px)}
+.news-item-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:5px}
+.news-headline{font-size:0.85rem;font-weight:500;line-height:1.45;flex:1}
+.news-signal{font-size:0.7rem;padding:2px 9px;border-radius:12px;white-space:nowrap;font-weight:500;flex-shrink:0;margin-top:1px}
+.signal-spring{background:rgba(80,160,40,0.2);color:#2a5a08}.signal-summer{background:rgba(200,140,20,0.2);color:#7a4800}
+.signal-autumn{background:rgba(180,80,20,0.2);color:#7a2800}.signal-winter{background:rgba(30,80,180,0.2);color:#0a2a60}
+.signal-neutral{background:rgba(120,120,120,0.15);color:#444}
+.news-date{font-size:0.7rem;opacity:0.55;font-weight:300}
+.news-placeholder{text-align:center;padding:2rem;font-size:0.85rem;opacity:0.55;font-weight:300;line-height:1.7}
+.status-bar{display:flex;align-items:center;gap:8px;margin-bottom:1.5rem;font-size:0.75rem;font-weight:300;opacity:0.7}
+.status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.status-dot.live{background:#4caf50;box-shadow:0 0 6px #4caf5080}
+.status-dot.loading{background:#ff9800;animation:pulse 1s infinite}
+.status-dot.error{background:#f44336}
+@keyframes pulse{0%,100%{opacity:0.3}50%{opacity:0.9}}
+.loading-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;animation:pulse 1.2s ease-in-out infinite;opacity:0.5}
+.footer{text-align:center;font-size:0.7rem;opacity:0.4;margin-top:2.5rem;font-weight:300}
+@media(max-width:620px){
+  .page{padding:1.5rem 1rem 4rem}header h1{font-size:1.45rem}
+  .main-card,.panel{padding:1.25rem}.sector-title{font-size:1.3rem}
+  .season-grid{grid-template-columns:repeat(2,1fr)}.card-top{flex-direction:column;gap:0.4rem}
+  .nav{width:100%}.nav-btn{flex:1;text-align:center;padding:7px 8px;font-size:0.72rem}
+}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div class="page">
+  <header>
+    <h1 id="h1">산업 사이클 달력</h1>
+    <p id="hsub">지금 이 산업, 봄일까요 겨울일까요?</p>
+  </header>
+  <div class="status-bar" id="statusBar">
+    <div class="status-dot loading" id="statusDot"></div>
+    <span id="statusText">데이터 불러오는 중...</span>
+  </div>
+  <div class="nav" id="mainNav">
+    <button class="nav-btn active" data-sec="analysis">섹터 분석</button>
+    <button class="nav-btn" data-sec="map">연관성 맵</button>
+    <button class="nav-btn" data-sec="portfolio">내 포트폴리오</button>
+    <button class="nav-btn" data-sec="news">뉴스</button>
+  </div>
+
+  <div class="section active" id="sec-analysis">
+    <div class="tabs" id="tabs"></div>
+    <div class="main-card" id="mainCard">
+      <div class="card-top">
+        <div class="sector-title" id="sectorTitle"></div>
+        <div class="badge" id="badge"></div>
+      </div>
+      <div class="reason" id="reason"></div>
+      <div class="sec-label">핵심 지표 — 클릭하면 설명이 나와요</div>
+      <div class="ind-grid" id="indGrid"></div>
+      <div class="sec-label">계절 판단 기준</div>
+      <div class="season-grid" id="seasonGrid"></div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-map">
+    <div class="panel" id="mapCard">
+      <div class="panel-title" id="mapTitle">섹터 연관성 맵</div>
+      <div class="panel-sub" id="mapSub">화살표 = 선행 영향 방향 · 섹터를 클릭하면 관계 설명이 나와요</div>
+      <canvas id="relationCanvas"></canvas>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-line" style="background:#4a9e20"></div>강한 영향</div>
+        <div class="legend-item"><div class="legend-line" style="background:#aaa;opacity:0.6"></div>약한 영향</div>
+      </div>
+      <div class="rel-detail" id="relDetail">
+        <div id="relDetailBody" style="font-size:0.83rem;line-height:1.7;font-weight:300;opacity:0.6">섹터를 클릭하면 연관 관계 설명이 나와요</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-portfolio">
+    <div class="panel" id="portCard">
+      <div class="panel-title" id="portTitle">내 포트폴리오 계절 체크</div>
+      <div class="panel-sub" id="portSub">관심 섹터를 골라보세요. 내 포트폴리오가 지금 어느 계절인지 알려드려요.</div>
+      <div class="port-sectors" id="portSectors"></div>
+      <div id="portResult"></div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-news">
+    <div class="panel" id="newsCard">
+      <div class="panel-title" id="newsTitle">섹터별 최신 뉴스</div>
+      <div class="panel-sub" id="newsSub">각 뉴스가 사이클 상 어떤 신호인지 판단해드려요</div>
+      <div class="news-sector-tabs" id="newsTabs"></div>
+      <div class="news-list" id="newsList"></div>
+    </div>
+  </div>
+
+  <div class="footer" id="footer"></div>
+</div>
+
+<script>
+// ============================================================
+// API 키 설정
+// ============================================================
+const FRED_API_KEY = "0298a8d2720e91548e48ee67d764926f";
+const ECOS_API_KEY = "U0SMFBQM1MMZ94A377QP";
+// ============================================================
+
+const PROXY = "https://api.allorigins.win/get?url=";
+
+const SECTORS = [
+  { name:"반도체", id:"semiconductor", icon:"💾",
+    indicators:[
+      {name:"산업생산지수",src:"FRED",key:"indpro",unit:"pt",desc:"전체 제조업·광업 생산량 지수예요. 경기가 좋아질수록 반도체 수요도 늘어요."},
+      {name:"미국 기준금리",src:"FRED",key:"us_rate",unit:"%",desc:"금리가 낮아지면 IT 기업 투자가 늘어 반도체 수요가 살아나요."},
+      {name:"미국 실업률",src:"FRED",key:"us_unrate",unit:"%",desc:"낮을수록 소비가 늘어 IT 기기·반도체 수요도 올라요."},
+      {name:"한국 기준금리",src:"ECOS",key:"kr_rate",unit:"%",desc:"인하 방향이면 기업 투자 여력이 늘어 반도체 업황 개선에 도움이 돼요."},
+    ],
+    seasons:{spring:"재고 감소 전환 + 생산지수 반등",summer:"생산지수 강세 + 금리 인하 국면",autumn:"생산지수 고점 횡보 + 금리 인상 압력",winter:"생산지수 하락 + 수요 부진"},
+    scoreLogic:d=>{ const ip=d.indpro?.change??0,r=d.us_rate?.value??5,u=d.us_unrate?.value??4; if(ip>0.5&&r<4)return"summer"; if(ip>0&&r<5)return"spring"; if(ip<0||u>5)return"winter"; return"autumn"; },
+    relations:[{to:"battery",lag:"3~6개월",str:"strong",desc:"반도체 생산지수가 오르면 배터리 수요도 따라 늘어요. 전기차·IT 기기 부품이 함께 움직이거든요."},{to:"auto",lag:"6개월",str:"weak",desc:"반도체 공급이 안정돼야 차량 생산도 정상화돼요. 공급 부족이 완화되면 자동차 섹터에 봄 신호가 와요."}],
+    rssKw:"반도체 삼성전자 하이닉스"
+  },
+  { name:"2차전지", id:"battery", icon:"🔋",
+    indicators:[
+      {name:"WTI 유가",src:"FRED",key:"wti",unit:"$",desc:"유가가 높으면 전기차 경쟁력이 올라가 배터리 수요도 늘어요."},
+      {name:"산업생산지수",src:"FRED",key:"indpro",unit:"pt",desc:"제조업이 활발하면 배터리 수요도 따라 늘어나요."},
+      {name:"미국 기준금리",src:"FRED",key:"us_rate",unit:"%",desc:"금리가 낮을수록 EV 구매가 늘어나 배터리 섹터에 유리해요."},
+      {name:"한국 기준금리",src:"ECOS",key:"kr_rate",unit:"%",desc:"금리 인하 방향이면 기업들이 더 과감하게 투자할 수 있어요."},
+    ],
+    seasons:{spring:"유가 반등 + 금리 인하 기대",summer:"유가 강세 + EV 수요 급증",autumn:"유가 하락 + 성장 둔화",winter:"유가 약세 + EV 수요 부진"},
+    scoreLogic:d=>{ const w=d.wti?.value??70,r=d.us_rate?.value??5; if(w>80&&r<4)return"summer"; if(w>70||r<4.5)return"spring"; if(w<60)return"winter"; return"autumn"; },
+    relations:[{to:"auto",lag:"동행",str:"strong",desc:"EV 판매가 오르면 배터리 수요도 바로 반응해요. 두 섹터는 거의 동시에 움직여요."},{to:"energy",lag:"역방향",str:"strong",desc:"유가가 오를수록 전기차 매력이 올라가 배터리 섹터가 좋아져요. 에너지 겨울이 배터리 봄의 신호일 수 있어요."}],
+    rssKw:"2차전지 배터리 LG에너지 삼성SDI"
+  },
+  { name:"자동차", id:"auto", icon:"🚗",
+    indicators:[
+      {name:"미국 실업률",src:"FRED",key:"us_unrate",unit:"%",desc:"낮을수록 사람들이 차를 더 많이 사요. 현대차·기아 미국 판매에 직결돼요."},
+      {name:"소비자심리지수",src:"FRED",key:"csi_us",unit:"pt",desc:"높을수록 자동차 같은 고가 소비가 늘어요."},
+      {name:"WTI 유가",src:"FRED",key:"wti",unit:"$",desc:"유가가 너무 오르면 유지비 부담으로 자동차 구매가 줄 수 있어요."},
+      {name:"한국 기준금리",src:"ECOS",key:"kr_rate",unit:"%",desc:"낮을수록 할부 부담이 줄어 국내 판매에 유리해요."},
+    ],
+    seasons:{spring:"소비심리 회복 + 실업률 안정",summer:"소비 호조 + 실업 낮음 + 판매 급증",autumn:"소비 둔화 + 인센티브 재증가",winter:"소비 위축 + 판매 부진"},
+    scoreLogic:d=>{ const c=d.csi_us?.value??70,u=d.us_unrate?.value??4; if(c>80&&u<4)return"summer"; if(c>70&&u<5)return"spring"; if(c<60||u>5)return"winter"; return"autumn"; },
+    relations:[{to:"retail",lag:"동행",str:"strong",desc:"소비 심리가 좋으면 자동차·소비재 모두 함께 올라요. 두 섹터는 거시 소비 경기를 공유해요."}],
+    rssKw:"자동차 현대차 기아 전기차"
+  },
+  { name:"바이오", id:"bio", icon:"💊",
+    indicators:[
+      {name:"미국 기준금리",src:"FRED",key:"us_rate",unit:"%",desc:"저금리일 때 투자를 많이 받아요. 금리가 낮을수록 업황이 좋아요."},
+      {name:"소비자심리지수",src:"FRED",key:"csi_us",unit:"pt",desc:"경기가 좋으면 의료비 지출도 늘어나요."},
+      {name:"산업생산지수",src:"FRED",key:"indpro",unit:"pt",desc:"경제 전반이 활발할수록 제약·의료 투자도 늘어나요."},
+      {name:"한국 기준금리",src:"ECOS",key:"kr_rate",unit:"%",desc:"낮을수록 바이오 스타트업 자금 조달이 쉬워져요."},
+    ],
+    seasons:{spring:"금리 인하 기대 + 임상 승인 회복",summer:"저금리 + 투자 활발 + 기술수출 증가",autumn:"금리 인상 + 투자 심리 위축",winter:"고금리 + 자금난 + 기술수출 중단"},
+    scoreLogic:d=>{ const r=d.us_rate?.value??5,c=d.csi_us?.value??70; if(r<3&&c>80)return"summer"; if(r<4.5)return"spring"; if(r>5.5)return"winter"; return"autumn"; },
+    relations:[{to:"finance",lag:"6~12개월",str:"weak",desc:"바이오 호황기엔 IPO·기술수출이 늘어 금융 섹터 수익도 올라가요."}],
+    rssKw:"바이오 제약 신약 임상 기술수출"
+  },
+  { name:"금융/은행", id:"finance", icon:"🏦",
+    indicators:[
+      {name:"한국 기준금리",src:"ECOS",key:"kr_rate",unit:"%",desc:"금리가 높을수록 예금·대출 마진(NIM)이 커져 은행 실적이 좋아요."},
+      {name:"미국 기준금리",src:"FRED",key:"us_rate",unit:"%",desc:"미국 금리가 높으면 한국 금리도 따라 오르는 경향이 있어요."},
+      {name:"소비자심리지수",src:"FRED",key:"csi_us",unit:"pt",desc:"소비 심리가 좋으면 대출 수요도 늘어나요."},
+      {name:"미국 실업률",src:"FRED",key:"us_unrate",unit:"%",desc:"낮으면 대출 연체도 줄어들어 은행 건전성이 좋아요."},
+    ],
+    seasons:{spring:"금리 인하 전환 + 연체율 안정",summer:"고금리 유지 + NIM 최대 + 대출 성장",autumn:"금리 인하 압력 + 대출 성장 둔화",winter:"연체율 상승 + NIM 하락 + 부실 우려"},
+    scoreLogic:d=>{ const k=d.kr_rate?.value??3,u=d.us_unrate?.value??4; if(k>3&&u<4.5)return"summer"; if(k>2.5)return"spring"; if(u>5.5)return"winter"; return"autumn"; },
+    relations:[{to:"construction",lag:"3~6개월",str:"strong",desc:"금리 인하가 시작되면 3~6개월 후 부동산 거래량이 살아나는 패턴이 반복돼요."},{to:"retail",lag:"동행",str:"weak",desc:"금리가 낮으면 가계 대출 부담이 줄어 소비도 함께 살아나요."}],
+    rssKw:"금리 은행 KB금융 신한 하나금융"
+  },
+  { name:"에너지", id:"energy", icon:"⚡",
+    indicators:[
+      {name:"WTI 유가",src:"FRED",key:"wti",unit:"$",desc:"유가가 오르면 정유·에너지 회사 수익이 직접 올라가요."},
+      {name:"산업생산지수",src:"FRED",key:"indpro",unit:"pt",desc:"공장 가동이 늘면 에너지 소비도 늘어요."},
+      {name:"미국 실업률",src:"FRED",key:"us_unrate",unit:"%",desc:"낮고 경기가 좋으면 이동·물류·생산이 늘어 에너지 수요도 늘어요."},
+      {name:"미국 기준금리",src:"FRED",key:"us_rate",unit:"%",desc:"금리가 높으면 에너지 기업들의 투자 비용이 올라가요."},
+    ],
+    seasons:{spring:"유가 반등 + 수요 회복 조짐",summer:"유가 강세 + 산업생산 활발 + 수요 피크",autumn:"유가 하락 전환 + 수요 둔화",winter:"유가 약세 + 산업생산 부진"},
+    scoreLogic:d=>{ const w=d.wti?.value??70,ip=d.indpro?.change??0; if(w>85&&ip>0)return"summer"; if(w>70)return"spring"; if(w<55)return"winter"; return"autumn"; },
+    relations:[{to:"battery",lag:"역방향",str:"strong",desc:"에너지(유가) 겨울이 오면 전기차 매력이 올라가 배터리 봄이 와요."},{to:"retail",lag:"3개월",str:"weak",desc:"유가가 오르면 물가가 오르고 소비 여력이 줄어요. 에너지 여름 이후 유통 가을이 오는 패턴이 있어요."}],
+    rssKw:"유가 원유 OPEC 에너지 정유"
+  },
+  { name:"유통/소비재", id:"retail", icon:"🛍",
+    indicators:[
+      {name:"소비자심리지수",src:"FRED",key:"csi_us",unit:"pt",desc:"높을수록 사람들이 지갑을 열어요."},
+      {name:"미국 실업률",src:"FRED",key:"us_unrate",unit:"%",desc:"낮을수록 안정적으로 돈을 벌고 소비도 늘어요."},
+      {name:"한국 소비심리",src:"ECOS",key:"kr_csi",unit:"pt",desc:"100 이상이면 긍정적인 소비 분위기예요."},
+      {name:"미국 기준금리",src:"FRED",key:"us_rate",unit:"%",desc:"높으면 가계 대출 부담이 늘어 소비 여력이 줄어요."},
+    ],
+    seasons:{spring:"소비심리 회복 + 실업률 안정",summer:"소비 호조 + 실업 낮음 + 매출 증가",autumn:"소비 증가 둔화 + 심리 위축",winter:"소비 부진 + 실업률 상승 + 매출 감소"},
+    scoreLogic:d=>{ const c=d.csi_us?.value??70,u=d.us_unrate?.value??4,k=d.kr_csi?.value??100; if(c>85&&u<4&&k>105)return"summer"; if(c>72&&u<5)return"spring"; if(c<60||u>5.5)return"winter"; return"autumn"; },
+    relations:[{to:"finance",lag:"동행",str:"weak",desc:"소비가 살아나면 대출 수요도 함께 늘어요. 두 섹터는 경기 사이클을 공유해요."}],
+    rssKw:"소비 유통 이마트 쿠팡 소매판매"
+  },
+  { name:"건설/부동산", id:"construction", icon:"🏗",
+    indicators:[
+      {name:"한국 기준금리",src:"ECOS",key:"kr_rate",unit:"%",desc:"낮아야 주택 구매 수요가 살아나고 건설 경기도 좋아져요."},
+      {name:"미국 기준금리",src:"FRED",key:"us_rate",unit:"%",desc:"미국 금리 인하 → 한국 금리 인하 → 부동산 경기 회복 순서예요."},
+      {name:"소비자심리지수",src:"FRED",key:"csi_us",unit:"pt",desc:"소비 심리가 좋으면 부동산 구매 의향도 높아져요."},
+      {name:"한국 소비심리",src:"ECOS",key:"kr_csi",unit:"pt",desc:"100 이상이면 부동산 시장에도 긍정적인 분위기가 형성돼요."},
+    ],
+    seasons:{spring:"금리 인하 전환 + 거래량 회복",summer:"저금리 + 거래 급증 + 분양 완판",autumn:"금리 인상 + 거래 둔화 + 미분양 증가",winter:"고금리 + 거래 절벽 + 미분양 급증"},
+    scoreLogic:d=>{ const k=d.kr_rate?.value??3,kc=d.kr_csi?.value??100; if(k<2.5&&kc>105)return"summer"; if(k<3.5||kc>102)return"spring"; if(k>4&&kc<95)return"winter"; return"autumn"; },
+    relations:[{to:"retail",lag:"6~12개월",str:"strong",desc:"부동산 거래가 살아나면 6~12개월 후 인테리어·가전·소비재 수요도 따라 올라요."},{to:"finance",lag:"역방향 선행",str:"strong",desc:"건설 침체가 심해지면 금융권 부실 우려가 커져요. 건설 겨울은 금융 겨울의 선행 지표예요."}],
+    rssKw:"부동산 아파트 미분양 건설 주택"
+  },
+];
+
+const DEFAULT_SEASONS=["winter","autumn","spring","spring","summer","autumn","winter","spring"];
+const THEMES={
+  spring:{bg:"linear-gradient(145deg,#b8d98a,#d4eeaa,#c8e89a)",card:"rgba(255,255,255,0.55)",navBg:"rgba(255,255,255,0.28)",navActive:"rgba(255,255,255,0.88)",tp:"#1a3a05",ts:"#3b6d11",badge:"rgba(180,230,120,0.75)",sBox:{spring:"rgba(255,255,255,0.72)",summer:"rgba(255,235,155,0.35)",autumn:"rgba(255,200,155,0.35)",winter:"rgba(175,210,248,0.35)"},label:"🌱 봄 — 회복기",particle:"spring_leaf",bars:{spring:"#4a9e20",summer:"#f5a000",autumn:"#c86820",winter:"#5588cc"}},
+  summer:{bg:"linear-gradient(145deg,#f5c840,#ffe878,#f0d050)",card:"rgba(255,255,255,0.55)",navBg:"rgba(255,255,255,0.28)",navActive:"rgba(255,255,255,0.88)",tp:"#4a2800",ts:"#8a5200",badge:"rgba(255,218,75,0.75)",sBox:{spring:"rgba(175,238,135,0.35)",summer:"rgba(255,255,255,0.72)",autumn:"rgba(255,200,155,0.35)",winter:"rgba(175,210,248,0.35)"},label:"☀️ 여름 — 호황기",particle:"sun",bars:{spring:"#4a9e20",summer:"#f5a000",autumn:"#c86820",winter:"#5588cc"}},
+  autumn:{bg:"linear-gradient(145deg,#c86820,#e89050,#d07030)",card:"rgba(255,255,255,0.55)",navBg:"rgba(255,255,255,0.28)",navActive:"rgba(255,255,255,0.88)",tp:"#4a1000",ts:"#8a3010",badge:"rgba(228,155,75,0.75)",sBox:{spring:"rgba(175,238,135,0.35)",summer:"rgba(255,235,155,0.35)",autumn:"rgba(255,255,255,0.72)",winter:"rgba(175,210,248,0.35)"},label:"🍂 가을 — 둔화기",particle:"autumn_leaf",bars:{spring:"#4a9e20",summer:"#f5a000",autumn:"#c86820",winter:"#5588cc"}},
+  winter:{bg:"linear-gradient(145deg,#8aaed8,#b8d0f0,#9abce0)",card:"rgba(255,255,255,0.55)",navBg:"rgba(255,255,255,0.28)",navActive:"rgba(255,255,255,0.88)",tp:"#061840",ts:"#0e3878",badge:"rgba(158,198,244,0.75)",sBox:{spring:"rgba(175,238,135,0.35)",summer:"rgba(255,235,155,0.35)",autumn:"rgba(255,200,155,0.35)",winter:"rgba(255,255,255,0.72)"},label:"❄️ 겨울 — 침체기",particle:"snow",bars:{spring:"#4a9e20",summer:"#f5a000",autumn:"#c86820",winter:"#5588cc"}},
+};
+const SL={spring:"🌱 봄",summer:"☀️ 여름",autumn:"🍂 가을",winter:"❄️ 겨울"};
+const SLF={spring:"🌱 봄 — 회복기",summer:"☀️ 여름 — 호황기",autumn:"🍂 가을 — 둔화기",winter:"❄️ 겨울 — 침체기"};
+const SC={spring:{l:"#2a5a08",c:"#1a3a05"},summer:{l:"#7a4800",c:"#4a2800"},autumn:{l:"#8a2800",c:"#5a1000"},winter:{l:"#0a2a60",c:"#061840"}};
+const SPC=['#4a9e20','#68bc38','#3a8a10','#7ecc48','#56aa28','#30780a'];
+const ATC=['#cc5018','#e07030','#b83808','#d86028','#a82808','#e88840'];
+const SIGNAL_KW={spring:['회복','반등','상승 전환','개선','바닥','저점','기대감','증가 전환'],summer:['호황','급증','사상 최대','최고','폭증','강세','역대'],autumn:['둔화','감소','부진 우려','속도 조절','정점','피크아웃','둔화세'],winter:['침체','급감','위기','하락','폭락','적자','손실','부진','한파']};
+const SIGNAL_LBL={spring:'🌱 회복 신호',summer:'☀️ 호황 신호',autumn:'🍂 둔화 신호',winter:'❄️ 침체 신호',neutral:'— 중립'};
+
+let activeTab=0,curSec='analysis',newsTab=0;
+let portSel=new Set(),liveData={},dataLoaded=false;
+let particles=[],animFrame=null,newsCache={};
+const cvs=document.getElementById('bg'),ctx2d=cvs.getContext('2d');
+
+async function fetchFRED(id){
+  try{
+    const r=await fetch(`https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${FRED_API_KEY}&file_type=json&limit=2&sort_order=desc`);
+    const d=await r.json(),obs=(d.observations||[]).filter(o=>o.value!=='.');
+    if(!obs.length)return null;
+    const c=parseFloat(obs[0].value),p=obs.length>1?parseFloat(obs[1].value):c;
+    return{value:c,change:c-p,date:obs[0].date};
+  }catch{return null;}
+}
+async function fetchECOS(code,item){
+  try{
+    const t=new Date(),ym=`${t.getFullYear()}${String(t.getMonth()+1).padStart(2,'0')}`,from=`${t.getFullYear()-1}${String(t.getMonth()+1).padStart(2,'0')}`;
+    const url=`https://ecos.bok.or.kr/api/StatisticSearch/${ECOS_API_KEY}/json/kr/1/2/${code}/MM/${from}/${ym}/${item}`;
+    const r=await fetch(PROXY+encodeURIComponent(url));
+    const w=await r.json(),d=JSON.parse(w.contents),rows=d?.StatisticSearch?.row||[];
+    if(!rows.length)return null;
+    rows.sort((a,b)=>b.TIME.localeCompare(a.TIME));
+    const c=parseFloat(rows[0].DATA_VALUE),p=rows.length>1?parseFloat(rows[1].DATA_VALUE):c;
+    return{value:c,change:c-p,date:rows[0].TIME};
+  }catch{return null;}
+}
+async function fetchNews(kw){
+  try{
+    const url=`https://news.naver.com/rss/search.naver?query=${encodeURIComponent(kw.split(' ')[0])}`;
+    const r=await fetch(PROXY+encodeURIComponent(url));
+    const w=await r.json(),xml=new DOMParser().parseFromString(w.contents,'text/xml');
+    return[...xml.querySelectorAll('item')].slice(0,6).map(it=>({
+      title:(it.querySelector('title')?.textContent||'').replace(/<[^>]+>/g,'').trim(),
+      link:it.querySelector('link')?.textContent?.trim()||'#',
+      date:it.querySelector('pubDate')?.textContent?.trim()||'',
+    }));
+  }catch{return[];}
+}
+
+function setStatus(state,msg){document.getElementById('statusDot').className=`status-dot ${state}`;document.getElementById('statusText').textContent=msg;}
+
+async function loadData(){
+  try{
+    setStatus('loading','실시간 데이터 불러오는 중...');
+    const [wti,us_rate,us_unrate,csi_us,indpro,kr_rate,kr_csi]=await Promise.allSettled([
+      fetchFRED('DCOILWTICO'),fetchFRED('FEDFUNDS'),fetchFRED('UNRATE'),
+      fetchFRED('UMCSENT'),fetchFRED('INDPRO'),
+      fetchECOS('722Y001','0101000'),fetchECOS('511Y002','BSI63B'),
+    ]);
+    const g=r=>r.status==='fulfilled'?r.value:null;
+    liveData={wti:g(wti),us_rate:g(us_rate),us_unrate:g(us_unrate),csi_us:g(csi_us),indpro:g(indpro),kr_rate:g(kr_rate),kr_csi:g(kr_csi)};
+    dataLoaded=true;
+    const n=Object.values(liveData).filter(Boolean).length,tot=7;
+    setStatus('live',n===tot?`실시간 연결됨 · ${new Date().toLocaleDateString('ko-KR')} 기준`:`${n}/${tot}개 연결됨 · 일부 기본값 사용`);
+    renderAll();
+  }catch(e){
+    setStatus('error','데이터 연결 실패 — 기본값으로 표시 중');
+  }
+}
+
+function getSeason(s,i){if(!dataLoaded)return DEFAULT_SEASONS[i]||'autumn';return s.scoreLogic(liveData);}
+
+function getReason(s,ss){
+  const d=liveData,hints=[d.wti?.value?`WTI $${d.wti.value.toFixed(0)}`:'',d.us_rate?.value?`미국금리 ${d.us_rate.value.toFixed(2)}%`:'',d.kr_rate?.value?`한국금리 ${d.kr_rate.value.toFixed(2)}%`:''].filter(Boolean).slice(0,2).join(', ');
+  const base={semiconductor:{spring:"재고 감소 신호와 함께 회복 초입 구간이에요.",summer:"실적 호조와 수요 강세가 이어지는 호황 구간이에요.",autumn:"정점을 지나 성장이 둔화되고 있어요.",winter:"수요 부진과 재고 적체로 침체 국면이에요."},battery:{spring:"원자재 안정과 함께 회복 신호가 나타나고 있어요.",summer:"EV 수요 급증으로 호황이 이어지고 있어요.",autumn:"성장 속도가 예상보다 느려지고 있어요.",winter:"EV 수요 부진과 재고 과잉이 이어지고 있어요."},auto:{spring:"소비 회복과 함께 판매가 살아나고 있어요.",summer:"판매 호조와 낮은 재고로 호황 구간이에요.",autumn:"판매 증가세가 둔화되고 있어요.",winter:"소비 위축으로 판매 부진이 이어지고 있어요."},bio:{spring:"기술수출 재개와 투자 심리 회복 조짐이에요.",summer:"저금리와 활발한 투자로 호황 구간이에요.",autumn:"투자 심리가 위축되고 있어요.",winter:"고금리와 자금난으로 침체 구간이에요."},finance:{spring:"금리 인하 전환 기대로 분위기가 살아나고 있어요.",summer:"고금리로 NIM이 높고 실적이 좋은 구간이에요.",autumn:"금리 인하 압력으로 마진이 줄고 있어요.",winter:"연체율 상승과 부실 우려가 커지고 있어요."},energy:{spring:"유가 반등과 수요 회복 신호가 보여요.",summer:"유가 강세와 수요 피크로 호황 구간이에요.",autumn:"유가가 고점에서 내려오고 있어요.",winter:"유가 약세와 수요 부진이 이어지고 있어요."},retail:{spring:"소비 심리가 서서히 회복되고 있어요.",summer:"소비 호조와 낮은 실업률로 호황 구간이에요.",autumn:"소비 증가세가 꺾이고 있어요.",winter:"소비 침체와 매출 감소가 이어지고 있어요."},construction:{spring:"금리 인하 기대로 거래량이 살아나고 있어요.",summer:"저금리와 거래 급증으로 호황 구간이에요.",autumn:"금리 부담으로 거래가 둔화되고 있어요.",winter:"고금리와 거래 절벽으로 침체 구간이에요."}};
+  const b=base[s.id]?.[ss]||"현재 사이클을 분석 중이에요.";return hints?`${b} (${hints} 기준)`:b;
+}
+
+function resizeCanvas(){cvs.width=window.innerWidth;cvs.height=window.innerHeight;}
+function makeParticles(type){
+  particles=[];const w=cvs.width,h=cvs.height;
+  if(type==='snow'){for(let i=0;i<70;i++)particles.push({x:Math.random()*w,y:Math.random()*h,r:Math.random()*3.5+0.8,speed:Math.random()*0.8+0.3,drift:Math.random()*0.6-0.3,op:Math.random()*0.6+0.25});}
+  else if(type==='spring_leaf'){for(let i=0;i<50;i++)particles.push({x:Math.random()*w,y:Math.random()*h,size:Math.random()*9+4,speed:Math.random()*0.55+0.2,drift:Math.random()*0.9-0.45,rot:Math.random()*Math.PI*2,rotSpeed:Math.random()*0.06-0.03,color:SPC[Math.floor(Math.random()*SPC.length)]});}
+  else if(type==='autumn_leaf'){for(let i=0;i<50;i++)particles.push({x:Math.random()*w,y:Math.random()*h,size:Math.random()*10+4,speed:Math.random()*0.65+0.2,drift:Math.random()*1.2-0.6,rot:Math.random()*Math.PI*2,rotSpeed:Math.random()*0.07-0.035,color:ATC[Math.floor(Math.random()*ATC.length)]});}
+  else if(type==='sun'){for(let i=0;i<40;i++)particles.push({x:Math.random()*w,y:Math.random()*h,r:Math.random()*3+0.5,speed:Math.random()*0.3+0.1,drift:Math.random()*0.35-0.175,op:Math.random()*0.45+0.15,pulse:Math.random()*Math.PI*2});}
+}
+function animLoop(){
+  ctx2d.clearRect(0,0,cvs.width,cvs.height);
+  const ss=getSeason(SECTORS[activeTab],activeTab),type=THEMES[ss].particle;
+  particles.forEach(p=>{
+    if(type==='snow'){ctx2d.beginPath();ctx2d.arc(p.x,p.y,p.r,0,Math.PI*2);ctx2d.fillStyle=`rgba(255,255,255,${p.op})`;ctx2d.fill();p.y+=p.speed;p.x+=p.drift;if(p.y>cvs.height){p.y=-5;p.x=Math.random()*cvs.width;}}
+    else if(type==='spring_leaf'||type==='autumn_leaf'){ctx2d.save();ctx2d.translate(p.x,p.y);ctx2d.rotate(p.rot);ctx2d.beginPath();ctx2d.ellipse(0,0,p.size,p.size*0.55,0,0,Math.PI*2);ctx2d.fillStyle=p.color+'bb';ctx2d.fill();ctx2d.restore();p.y+=p.speed;p.x+=p.drift;p.rot+=p.rotSpeed;if(p.y>cvs.height+25){p.y=-25;p.x=Math.random()*cvs.width;}}
+    else if(type==='sun'){p.pulse+=0.025;const op=Math.max(0.05,p.op+Math.sin(p.pulse)*0.13);ctx2d.beginPath();ctx2d.arc(p.x,p.y,p.r,0,Math.PI*2);ctx2d.fillStyle=`rgba(255,200,50,${op})`;ctx2d.fill();p.y-=p.speed*0.25;p.x+=p.drift*0.35;if(p.y<-5){p.y=cvs.height+5;p.x=Math.random()*cvs.width;}}
+  });
+  animFrame=requestAnimationFrame(animLoop);
+}
+
+function applyTheme(ss){
+  const t=THEMES[ss];
+  document.body.style.background=t.bg;
+  document.getElementById('h1').style.color=t.tp;
+  document.getElementById('hsub').style.color=t.ts;
+  document.getElementById('statusBar').style.color=t.ts;
+  ['mainCard','mapCard','portCard','newsCard'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.background=t.card;});
+  ['mapTitle','portTitle','newsTitle'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.color=t.tp;});
+  ['mapSub','portSub','newsSub','footer'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.color=t.ts;});
+  document.getElementById('sectorTitle').style.color=t.tp;
+  document.getElementById('badge').style.background=t.badge;
+  document.getElementById('badge').style.color=t.tp;
+  document.getElementById('badge').textContent=t.label;
+  document.getElementById('reason').style.color=t.tp;
+  document.querySelectorAll('.sec-label').forEach(el=>el.style.color=t.ts);
+  const nav=document.getElementById('mainNav');nav.style.background=t.navBg;
+  document.querySelectorAll('.nav-btn').forEach(b=>{b.style.color=t.ts;b.style.background='transparent';});
+  document.querySelectorAll('.nav-btn.active').forEach(b=>{b.style.background=t.navActive;b.style.color=t.tp;});
+  document.querySelectorAll('.tab').forEach(tb=>{tb.style.background='rgba(255,255,255,0.35)';tb.style.color=t.ts;});
+  document.querySelectorAll('.tab.active').forEach(tb=>{tb.style.background='rgba(255,255,255,0.88)';tb.style.color=t.tp;});
+  cancelAnimationFrame(animFrame);resizeCanvas();makeParticles(t.particle);animLoop();
+}
+
+function renderAnalysis(){
+  const s=SECTORS[activeTab],ss=getSeason(s,activeTab),t=THEMES[ss];
+  const tabsEl=document.getElementById('tabs');tabsEl.innerHTML='';
+  SECTORS.forEach((sec,i)=>{const tb=document.createElement('div');tb.className='tab'+(i===activeTab?' active':'');tb.textContent=sec.name;tb.onclick=()=>{activeTab=i;renderAnalysis();applyTheme(getSeason(SECTORS[i],i));};tabsEl.appendChild(tb);});
+  document.getElementById('sectorTitle').textContent=s.name;
+  document.getElementById('reason').textContent=getReason(s,ss);
+  const grid=document.getElementById('indGrid');grid.innerHTML='';
+  s.indicators.forEach(ind=>{
+    const d=liveData[ind.key],val=d?`${d.value.toFixed(2)}${ind.unit}`:'—';
+    const chgHtml=d?(()=>{const sg=d.change>=0?'▲':'▼',col=d.change>=0?'#2e7d32':'#c62828';return`<div class="ind-change" style="color:${col}">${sg} ${Math.abs(d.change).toFixed(2)}${ind.unit}</div>`;})()`:<span class="loading-dot"></span>`;
+    const card=document.createElement('div');card.className='ind-card';card.style.background=t.card;
+    card.innerHTML=`<div class="ind-top"><div class="ind-name" style="color:${t.tp}">${ind.name}</div><div class="ind-value" style="color:${t.tp}">${val}</div></div>${chgHtml}<div class="ind-src" style="color:${t.ts}">${ind.src}</div><div class="ind-desc" style="color:${t.tp}">${ind.desc}</div>`;
+    card.addEventListener('click',()=>card.classList.toggle('open'));grid.appendChild(card);
+  });
+  const sg=document.getElementById('seasonGrid');sg.innerHTML='';
+  ['spring','summer','autumn','winter'].forEach(sv=>{
+    const box=document.createElement('div');box.className='s-box'+(sv===ss?' current':'');
+    box.style.background=t.sBox[sv];box.style.border=sv===ss?'1.5px solid rgba(255,255,255,0.65)':'1.5px solid transparent';
+    const sc=SC[sv];box.innerHTML=`<div class="s-icon">${{spring:'🌱',summer:'☀️',autumn:'🍂',winter:'❄️'}[sv]}</div><div class="s-label" style="color:${sc.l}">${SLF[sv]}</div><div class="s-cond" style="color:${sc.c}">${s.seasons[sv]}</div>`;
+    sg.appendChild(box);
+  });
+}
+
+function renderMap(){
+  const rc=document.getElementById('relationCanvas');
+  const pageW=Math.min(window.innerWidth,900);
+  const W=Math.max(pageW-96,280),H=Math.min(W*0.65,400);
+  rc.width=W;rc.height=H;rc.style.width=W+'px';rc.style.height=H+'px';
+  const mc=rc.getContext('2d');
+  const ss=getSeason(SECTORS[activeTab],activeTab),t=THEMES[ss];
+  const cx=W/2,cy=H/2,radius=Math.min(W,H)*0.36;
+  const SCOLORS={spring:'#4a9e20',summer:'#d4920a',autumn:'#c86820',winter:'#3a78c0'};
+  const BGCOLORS={spring:'rgba(180,240,120,0.85)',summer:'rgba(255,225,100,0.85)',autumn:'rgba(240,170,100,0.85)',winter:'rgba(170,205,250,0.85)'};
+  const nodes=SECTORS.map((s,i)=>{const a=(i/SECTORS.length)*Math.PI*2-Math.PI/2;return{...s,x:cx+Math.cos(a)*radius,y:cy+Math.sin(a)*radius,ss:getSeason(s,i)};});
+  mc.clearRect(0,0,W,H);
+  nodes.forEach(n=>{
+    (n.relations||[]).forEach(rel=>{
+      const tgt=nodes.find(nd=>nd.id===rel.to);if(!tgt)return;
+      const dx=tgt.x-n.x,dy=tgt.y-n.y,dist=Math.sqrt(dx*dx+dy*dy);
+      const sx=n.x+dx/dist*24,sy=n.y+dy/dist*24,ex=tgt.x-dx/dist*24,ey=tgt.y-dy/dist*24;
+      mc.beginPath();mc.moveTo(sx,sy);mc.lineTo(ex,ey);
+      mc.strokeStyle=rel.str==='strong'?SCOLORS[n.ss]+'cc':'#aaa5';
+      mc.lineWidth=rel.str==='strong'?2:1;mc.setLineDash(rel.str==='strong'?[]:[4,4]);mc.stroke();mc.setLineDash([]);
+      const ang=Math.atan2(ey-sy,ex-sx);
+      mc.beginPath();mc.moveTo(ex,ey);mc.lineTo(ex-10*Math.cos(ang-0.4),ey-10*Math.sin(ang-0.4));mc.lineTo(ex-10*Math.cos(ang+0.4),ey-10*Math.sin(ang+0.4));mc.closePath();
+      mc.fillStyle=rel.str==='strong'?SCOLORS[n.ss]+'cc':'#aaa5';mc.fill();
+    });
+  });
+  nodes.forEach(n=>{
+    mc.beginPath();mc.arc(n.x,n.y,22,0,Math.PI*2);mc.fillStyle=BGCOLORS[n.ss];mc.fill();
+    mc.strokeStyle='rgba(255,255,255,0.7)';mc.lineWidth=1.5;mc.stroke();
+    mc.font='14px sans-serif';mc.textAlign='center';mc.textBaseline='middle';mc.fillText(n.icon,n.x,n.y-2);
+    mc.font='bold 9px sans-serif';mc.fillStyle='rgba(0,0,0,0.55)';mc.fillText(SL[n.ss],n.x,n.y+13);
+    mc.font='10px sans-serif';mc.fillStyle='rgba(30,30,30,0.8)';mc.fillText(n.name,n.x,n.y+32);
+  });
+  rc.onclick=e=>{
+    const rect=rc.getBoundingClientRect(),mx=(e.clientX-rect.left)*(W/rect.width),my=(e.clientY-rect.top)*(H/rect.height);
+    const hit=nodes.find(n=>Math.sqrt((mx-n.x)**2+(my-n.y)**2)<26);if(!hit)return;
+    const body=document.getElementById('relDetailBody');
+    if(!hit.relations?.length){body.innerHTML=`<b style="color:${t.tp}">${hit.icon} ${hit.name}</b> — 현재 <b>${SLF[hit.ss]}</b>이에요.`;return;}
+    body.innerHTML=`<div style="font-weight:500;color:${t.tp};margin-bottom:8px">${hit.icon} ${hit.name} · 현재 ${SLF[hit.ss]}</div>`+
+      hit.relations.map(rel=>{const tgt=SECTORS.find(s=>s.id===rel.to);return`<div style="margin-bottom:6px"><b style="color:${t.tp}">${hit.icon}${hit.name} → ${tgt?.icon||''}${tgt?.name||rel.to}</b> (${rel.lag})<br><span style="font-weight:300;opacity:0.85">${rel.desc}</span></div>`;}).join('');
+    body.style.fontSize='0.83rem';body.style.lineHeight='1.7';body.style.color=t.tp;
+  };
+}
+
+function renderPortfolio(){
+  const ss=getSeason(SECTORS[activeTab],activeTab),t=THEMES[ss];
+  const container=document.getElementById('portSectors');container.innerHTML='';
+  SECTORS.forEach((s,i)=>{
+    const sv=getSeason(s,i),chip=document.createElement('div');
+    chip.className='port-chip'+(portSel.has(s.id)?' selected':'');
+    chip.style.background=portSel.has(s.id)?'rgba(255,255,255,0.68)':'rgba(255,255,255,0.32)';
+    chip.innerHTML=`<div class="port-chip-icon">${s.icon}</div><div class="port-chip-name" style="color:${t.tp}">${s.name}</div><div class="port-chip-season" style="color:${t.ts}">${SL[sv]}</div>`;
+    chip.onclick=()=>{if(portSel.has(s.id))portSel.delete(s.id);else portSel.add(s.id);renderPortfolio();};
+    container.appendChild(chip);
+  });
+  const result=document.getElementById('portResult');
+  if(!portSel.size){result.innerHTML=`<div class="port-empty" style="color:${t.ts}">위에서 관심 섹터를 골라보세요</div>`;return;}
+  const sel=SECTORS.filter(s=>portSel.has(s.id));
+  const cnt={spring:0,summer:0,autumn:0,winter:0};
+  sel.forEach((s,_,arr)=>cnt[getSeason(s,SECTORS.indexOf(s))]++);
+  const dom=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0][0];
+  const pct=sv=>Math.round((cnt[sv]/sel.length)*100);
+  const advice={spring:"포트폴리오가 회복 국면이에요. 바닥을 다지는 섹터들이 많아 앞으로 상승 여지가 있을 수 있어요. 조금씩 비중을 늘려볼 만한 시기예요.",summer:"포트폴리오가 호황 국면이에요. 수익이 좋은 시기지만, 정점 이후를 대비해 일부 차익 실현도 고려해볼 만해요.",autumn:"포트폴리오가 둔화 국면이에요. 겨울을 대비해 방어적 섹터 비중을 높이거나, 현금을 일부 확보해두는 게 좋을 수 있어요.",winter:"포트폴리오가 침체 국면이에요. 지금은 버티는 시기예요. 다만 봄 전환 신호를 미리 포착할 준비를 해두면 좋아요."};
+  result.innerHTML=`<div class="port-result"><div class="port-result-top"><div class="port-big-season">${{spring:'🌱',summer:'☀️',autumn:'🍂',winter:'❄️'}[dom]}</div><div><div class="port-result-title" style="color:${t.tp}">내 포트폴리오는 ${SLF[dom]}이에요</div><div class="port-result-sub" style="color:${t.ts}">${sel.length}개 섹터 선택됨</div></div></div><div class="port-bars">${['spring','summer','autumn','winter'].map(sv=>`<div class="port-bar-row"><div class="port-bar-label" style="color:${t.ts}">${SL[sv]}</div><div class="port-bar-track"><div class="port-bar-fill" style="width:${pct(sv)}%;background:${t.bars[sv]}"></div></div><div class="port-bar-pct" style="color:${t.tp}">${pct(sv)}%</div></div>`).join('')}</div><div class="port-advice" style="color:${t.tp}">${advice[dom]}</div></div>`;
+}
+
+async function renderNews(){
+  const ss=getSeason(SECTORS[activeTab],activeTab),t=THEMES[ss];
+  const tabsEl=document.getElementById('newsTabs');tabsEl.innerHTML='';
+  SECTORS.forEach((s,i)=>{
+    const tb=document.createElement('div');tb.className='news-tab'+(i===newsTab?' active':'');
+    tb.textContent=`${s.icon} ${s.name}`;
+    tb.style.background=i===newsTab?'rgba(255,255,255,0.65)':'rgba(255,255,255,0.3)';
+    tb.style.color=t.tp;
+    tb.onclick=()=>{newsTab=i;renderNews();};
+    tabsEl.appendChild(tb);
+  });
+  const s=SECTORS[newsTab],list=document.getElementById('newsList');
+  list.innerHTML=`<div class="news-placeholder" style="color:${t.ts}">뉴스 불러오는 중...</div>`;
+  if(!newsCache[s.id])newsCache[s.id]=await fetchNews(s.rssKw);
+  const articles=newsCache[s.id];
+  if(!articles.length){list.innerHTML=`<div class="news-placeholder" style="color:${t.ts}">뉴스를 불러오지 못했어요.<br>잠시 후 다시 시도해주세요.</div>`;return;}
+  list.innerHTML='';
+  articles.forEach(a=>{
+    let sig='neutral';for(const[k,kws]of Object.entries(SIGNAL_KW)){if(kws.some(w=>a.title.includes(w))){sig=k;break;}}
+    const item=document.createElement('a');item.className='news-item';item.href=a.link;item.target='_blank';item.rel='noopener';
+    const dateStr=a.date?new Date(a.date).toLocaleDateString('ko-KR',{month:'short',day:'numeric'}):'';
+    item.innerHTML=`<div class="news-item-top"><div class="news-headline" style="color:${t.tp}">${a.title}</div><div class="news-signal signal-${sig}">${SIGNAL_LBL[sig]}</div></div><div class="news-date" style="color:${t.ts}">${dateStr}</div>`;
+    list.appendChild(item);
+  });
+}
+
+function switchSection(sec){
+  curSec=sec;
+  document.querySelectorAll('.section').forEach(el=>el.classList.remove('active'));
+  document.getElementById('sec-'+sec).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.sec===sec));
+  const ss=getSeason(SECTORS[activeTab],activeTab),t=THEMES[ss];
+  document.querySelectorAll('.nav-btn').forEach(b=>{b.style.color=t.ts;b.style.background='transparent';});
+  document.querySelectorAll('.nav-btn.active').forEach(b=>{b.style.background=t.navActive;b.style.color=t.tp;});
+  // display:none → block 후 레이아웃 계산 완료되면 렌더링
+  requestAnimationFrame(()=>{
+    if(sec==='map')renderMap();
+    else if(sec==='portfolio')renderPortfolio();
+    else if(sec==='news')renderNews();
+  });
+}
+
+function renderAll(){
+  renderAnalysis();applyTheme(getSeason(SECTORS[activeTab],activeTab));
+  if(curSec==='map')renderMap();
+  else if(curSec==='portfolio')renderPortfolio();
+  else if(curSec==='news')renderNews();
+  document.getElementById('footer').textContent=`데이터 출처: FRED (미 연준) · 한국은행 ECOS · ${new Date().getFullYear()}`;
+}
+
+document.querySelectorAll('.nav-btn').forEach(b=>b.addEventListener('click',()=>switchSection(b.dataset.sec)));
+window.addEventListener('resize',()=>{resizeCanvas();makeParticles(THEMES[getSeason(SECTORS[activeTab],activeTab)].particle);if(curSec==='map')renderMap();});
+
+// UI 먼저 렌더링 — API 호출과 무관하게 탭 전환 동작
+renderAll();
+// API 데이터는 별도로 비동기 로드 (실패해도 UI에 영향 없음)
+loadData().catch(()=>setStatus('error','API 키를 확인해주세요 — 기본 데이터로 표시 중'));
+</script>
+</body>
+</html>
