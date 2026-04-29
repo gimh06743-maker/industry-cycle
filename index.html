@@ -171,7 +171,7 @@ header p{font-size:0.88rem;font-weight:300;opacity:0.7;transition:color 0.8s}
 // ============================================================
 // API 키 설정
 // ============================================================
-const FRED_API_KEY = "8b39b3e9b215e4320dd650dc77105748";
+const FRED_API_KEY = "0298a8d2720e91548e48ee67d764926f";
 const ECOS_API_KEY = "U0SMFBQM1MMZ94A377QP";
 // ============================================================
 
@@ -410,7 +410,8 @@ function renderAnalysis(){
   const grid=document.getElementById('indGrid');grid.innerHTML='';
   s.indicators.forEach(ind=>{
     const d=liveData[ind.key],val=d?`${d.value.toFixed(2)}${ind.unit}`:'—';
-    const chgHtml=d?(()=>{const sg=d.change>=0?'▲':'▼',col=d.change>=0?'#2e7d32':'#c62828';return`<div class="ind-change" style="color:${col}">${sg} ${Math.abs(d.change).toFixed(2)}${ind.unit}</div>`;})()`:<span class="loading-dot"></span>`;
+    let chgHtml='<span class="loading-dot"></span>';
+    if(d){const sg=d.change>=0?'▲':'▼';const col=d.change>=0?'#2e7d32':'#c62828';chgHtml='<div class="ind-change" style="color:'+col+'">'+sg+' '+Math.abs(d.change).toFixed(2)+ind.unit+'</div>';}
     const card=document.createElement('div');card.className='ind-card';card.style.background=t.card;
     card.innerHTML=`<div class="ind-top"><div class="ind-name" style="color:${t.tp}">${ind.name}</div><div class="ind-value" style="color:${t.tp}">${val}</div></div>${chgHtml}<div class="ind-src" style="color:${t.ts}">${ind.src}</div><div class="ind-desc" style="color:${t.tp}">${ind.desc}</div>`;
     card.addEventListener('click',()=>card.classList.toggle('open'));grid.appendChild(card);
