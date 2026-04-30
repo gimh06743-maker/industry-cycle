@@ -175,7 +175,7 @@ const FRED_API_KEY = "0298a8d2720e91548e48ee67d764926f";
 const ECOS_API_KEY = "U0SMFBQM1MMZ94A377QP";
 // ============================================================
 
-const PROXY = "https://api.allorigins.win/get?url=";
+const PROXY = "https://corsproxy.io/?";
 
 const SECTORS = [
   { name:"반도체", id:"semiconductor", icon:"💾",
@@ -310,7 +310,9 @@ async function fetchECOS(code,item){
     const t=new Date(),ym=`${t.getFullYear()}${String(t.getMonth()+1).padStart(2,'0')}`,from=`${t.getFullYear()-1}${String(t.getMonth()+1).padStart(2,'0')}`;
     const url=`https://ecos.bok.or.kr/api/StatisticSearch/${ECOS_API_KEY}/json/kr/1/2/${code}/MM/${from}/${ym}/${item}`;
     const r=await fetch(PROXY+encodeURIComponent(url));
-    const w=await r.json(),d=JSON.parse(w.contents),rows=d?.StatisticSearch?.row||[];
+    const text=await r.text();
+    let parsed;try{parsed=JSON.parse(text);}catch{return null;}
+    const d=parsed,rows=d?.StatisticSearch?.row||[];
     if(!rows.length)return null;
     rows.sort((a,b)=>b.TIME.localeCompare(a.TIME));
     const c=parseFloat(rows[0].DATA_VALUE),p=rows.length>1?parseFloat(rows[1].DATA_VALUE):c;
@@ -321,7 +323,8 @@ async function fetchNews(kw){
   try{
     const url=`https://news.naver.com/rss/search.naver?query=${encodeURIComponent(kw.split(' ')[0])}`;
     const r=await fetch(PROXY+encodeURIComponent(url));
-    const w=await r.json(),xml=new DOMParser().parseFromString(w.contents,'text/xml');
+    const text=await r.text();
+    const xml=new DOMParser().parseFromString(text,'text/xml');
     return[...xml.querySelectorAll('item')].slice(0,6).map(it=>({
       title:(it.querySelector('title')?.textContent||'').replace(/<[^>]+>/g,'').trim(),
       link:it.querySelector('link')?.textContent?.trim()||'#',
